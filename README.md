@@ -1,116 +1,148 @@
 # eqoa-iso-pipeline
 
-Debug and serve pipeline for EQOA on PCSX2. Intercepts PS2 disc reads via a PNACH hook and serves ESF zone data (original or patched) from the host through EE RAM shared memory. Also provides live debug commands via PINE IPC for player inspection, entity scanning, and teleportation.
+Tools for working with EQOA on PCSX2 — a **debug tool** for inspecting live game state, and a **serve pipeline** for modding zone data without touching the ISO.
 
-## How It Works
+## Tools
 
-```
-PCSX2 (PS2 client)
-  │  VICdStreamRead hooked by PNACH
-  │  writes sector request to EE RAM (0x000FA800)
-  │  spins waiting for flag=2 (done)
-  ▼
-eqoa-iso-pipeline serve
-  │  polls /proc/PID/mem for flag=1 (pending)
-  │  reads from ISO (or zone patch overlay)
-  │  writes data to EE RAM destination
-  │  sets flag=2 (done)
-  ▼
-PS2 client continues with served data
-```
+### `eqoa-debug` — Live Debugging
 
-The ISO is never modified — zone patches are overlays served in-memory.
-
-## Commands
+Connects to PCSX2 via [PINE IPC](https://wiki.pcsx2.net/PINE) to inspect and modify game state in real time. No special setup beyond enabling PINE in PCSX2 settings.
 
 ```bash
-# Serve world ESF reads from ISO (TUNARIA + ODUS + PLANESKY)
-eqoa-iso-pipeline serve game.iso
-
-# Serve with zone overlay patches
-eqoa-iso-pipeline serve game.iso --patches ~/Documents/eqoa/ESF-changes/patches
-
-# Show hook debug state
-eqoa-iso-pipeline status
-eqoa-iso-pipeline status --watch
-
-# Player info (name, class, race, level, HP, position)
-eqoa-iso-pipeline player
-
-# Current world/zone
-eqoa-iso-pipeline zone
-
-# Scan visible entities (NPCs, players)
-eqoa-iso-pipeline entities
-
-# Teleport player
-eqoa-iso-pipeline teleport 25400 100 15800
-
-# Read arbitrary EE RAM address
-eqoa-iso-pipeline read 0x01FBBA58
-
-# Hex dump EE RAM region
-eqoa-iso-pipeline dump 0x01FBBA00 256
+eqoa-debug player                    # character info (name, class, level, HP)
+eqoa-debug entities                  # list nearby NPCs and players
+eqoa-debug teleport 25400 100 15800  # move your character
+eqoa-debug pos --watch               # live position tracker
+eqoa-debug zone                      # current world (Tunaria/Odus)
+eqoa-debug read 0x01FBBA58           # read any EE RAM address
+eqoa-debug dump 0x006F35D0 240       # hex dump memory region
+eqoa-debug info                      # PCSX2 version and game info
 ```
 
-All debug commands use PINE IPC by default. The serve loop uses `/proc/PID/mem` for the speed required by the PS2 hook's spin-wait.
+### `eqoa-iso-pipeline` — Zone Serve Pipeline
+
+Intercepts PS2 disc reads via a PNACH hook and serves world ESF data (TUNARIA, ODUS, PLANESKY) from the host filesystem. Supports zone overlay patches — the ISO is never modified.
+
+```bash
+eqoa-iso-pipeline serve ~/eqoa.iso
+eqoa-iso-pipeline serve ~/eqoa.iso --patches ~/my-patches/
+eqoa-iso-pipeline status --watch
+```
+
+Requires the PNACH loadhook installed in your PCSX2 cheats directory. See [Setup](#pipeline-setup) below.
+
+## Install
+
+```bash
+go install github.com/eqoa/iso-pipeline/cmd/eqoa-debug@latest
+go install github.com/eqoa/iso-pipeline/cmd/eqoa-iso-pipeline@latest
+```
+
+Or build from source:
+
+```bash
+git clone <this-repo>
+cd eqoa-iso-pipeline
+go build -o eqoa-debug ./cmd/eqoa-debug
+go build -o eqoa-iso-pipeline ./cmd/eqoa-iso-pipeline
+```
+
+## Debug Setup
+
+1. Open PCSX2 settings
+2. Enable **PINE** (Settings > Advanced > Enable PINE)
+3. Run EQOA
+4. Use `eqoa-debug` commands
+
+That's it. PINE uses a local socket — no network, no risk.
+
+## Pipeline Setup
+
+The serve pipeline requires a PNACH hook that redirects disc reads through EE RAM shared memory.
+
+1. Copy the PNACH loadhook to your PCSX2 cheats directory:
+   ```
+   cp EEEE1FCC-loadhook.pnach ~/.config/PCSX2/cheats/
+   ```
+2. Enable cheats in PCSX2 (System > Enable Cheats)
+3. Start EQOA — the game will freeze at the loading screen waiting for the pipeline
+4. Run: `eqoa-iso-pipeline serve /path/to/eqoa.iso`
+5. The game continues loading with data served from the host
+
+### Zone Patches
+
+Create zone overlay patches with [esfpatch](https://github.com/eqoa/go-eqoa-pkg/cmd/esfpatch):
+
+```bash
+esfpatch -zone 84 -color ff0000 eqoa.iso    # red Freeport
+```
+
+This produces `zone_84.json` + `zone_84.bin`. Pass the directory to the pipeline:
+
+```bash
+eqoa-iso-pipeline serve eqoa.iso --patches ./my-patches/
+```
 
 ## Package Structure
 
 ```
-cmd/eqoa-iso-pipeline/main.go    CLI entry point
+cmd/
+  eqoa-debug/          Debug tool (PINE-based, no hook needed)
+  eqoa-iso-pipeline/   Serve pipeline (requires PNACH hook)
+
 pkg/pcsx2/
-  pcsx2.go       PCSX2 process discovery, constants
-  access.go      EE RAM access (PINE + /proc)
-  pine.go        PINE IPC client
-  serve.go       ESF serve loop, zone patch loading
-  player.go      Player info (name, class, HP, position)
-  entities.go    Entity table scanning
-  debug.go       Debug region struct (0x000FA800)
+  pcsx2.go             PCSX2 process discovery, EE RAM constants
+  pine.go              PINE IPC client
+  access.go            EEAccess interface (shared by PINE + /proc)
+  player.go            Player info reader/writer
+  entities.go          Entity table scanner
+  serve.go             ESF serve loop with zone patch overlay
+  debug.go             Hook debug region parser
 ```
 
-## World ESF Sector Ranges
+## EE RAM Reference
 
-| World | Start Sector | End Sector | Size |
-|-------|-------------|------------|------|
+### Player
+
+| Address | Type | Field |
+|---------|------|-------|
+| `0x01FBBA10` | string | Character name |
+| `0x01FBBA28` | int32 | Class |
+| `0x01FBBA2C` | int32 | Race |
+| `0x01FBBA30` | int32 | Level |
+| `0x01FB5D60` | int32 | World ID (0=Tunaria, 2=Odus) |
+| `0x01FB65B0` | float32 | X position (writable) |
+| `0x01FB65B4` | float32 | Y position (writable) |
+| `0x01FB65B8` | float32 | Z position (writable) |
+| `0x01FBBA8C` | int32 | HP |
+| `0x01FBBA90` | int32 | Max HP |
+
+### Entity Table
+
+Base address: `0x006F35D0`, stride: 240 bytes, up to 50 slots.
+
+| Offset | Type | Field |
+|--------|------|-------|
+| `+0x5C` | string(24) | Entity name |
+| `+0x74` | byte | Level |
+| `+0xC0` | ptr | Game object pointer (valid = has position) |
+| `+0xD0` | float32 | X position |
+| `+0xD4` | float32 | Y position |
+| `+0xD8` | float32 | Z position |
+| `+0xDC` | uint32 | Model DictID |
+
+### World ESF Sectors
+
+| World | Start | End | Size |
+|-------|-------|-----|------|
 | TUNARIA | 520000 | 1006934 | ~951 MB |
 | ODUS | 1006934 | 1100906 | ~183 MB |
 | PLANESKY | 1100906 | 1110589 | ~19 MB |
 
-All three are served by the PNACH hook (sector range 520000–1110589).
-
-## EE RAM Debug Region (0x000FA800)
-
-| Offset | Field | Description |
-|--------|-------|-------------|
-| +0x00 | request_sector | Sector number |
-| +0x04 | request_count | Sector count (×2048 bytes) |
-| +0x08 | request_dest | EE RAM destination address |
-| +0x0C | request_flag | 0=idle, 1=pending, 2=done, 3=error |
-| +0x10 | total_calls | Total VICdStreamRead calls |
-| +0x14 | last_sector | Last sector read |
-| +0x18 | world_hits | World sector hits |
-| +0x1C | last_world_sector | Last world sector |
-| +0x20 | redirect_count | Fulfilled requests |
-| +0x24 | last_xfer_size | Bytes in last transfer |
-
-## Key EE RAM Addresses
-
-| Address | Type | Description |
-|---------|------|-------------|
-| 0x01FB5D60 | int32 | World ID (0=Tunaria, 2=Odus) |
-| 0x01FB65B0 | float32 | Live player X position |
-| 0x01FB65B4 | float32 | Live player Y position |
-| 0x01FB65B8 | float32 | Live player Z position |
-| 0x01FBBA00 | — | Player Data Block (name, class, race, level, HP) |
-| 0x006F35D0 | — | Entity table (240-byte stride, 50 slots) |
-
 ## Dependencies
 
-None — stdlib only.
+None — Go stdlib only.
 
-## Related
+## Platform
 
-- **PNACH hook**: `~/Documents/eqoa/cheats/EEEE1FCC-loadhook.pnach`
-- **esfpatch**: `go-eqoa-pkg/cmd/esfpatch/` — create zone overlay patches
-- **esfextract**: `go-eqoa-pkg/cmd/esfextract/` — inspect zones, export OBJ
+Linux only. Uses `/proc` for process discovery and EE RAM access. PINE IPC works on any platform where PCSX2 supports it, but process auto-detection is Linux-specific.
