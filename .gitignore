@@ -1,0 +1,7 @@
+# Binary
+eqoa-iso-pipeline
+
+# IDE
+.idea/
+.vscode/
+*.swp
