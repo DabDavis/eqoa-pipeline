@@ -1,14 +1,13 @@
-// eqoa-debug: Live debugging tools for EQOA on PCSX2.
+// eqoa-debug: Read-only debugging tools for EQOA on PCSX2.
 //
-// Reads and writes PCSX2's EE RAM via PINE IPC to inspect player state,
-// scan entities, teleport, and dump memory. No PNACH hook required —
+// Reads PCSX2's EE RAM via PINE IPC to inspect player state,
+// scan entities, and dump memory. No PNACH hook required —
 // works with any running PCSX2 instance playing EQOA.
 //
 // Usage:
 //
 //	eqoa-debug player                        # show player info
 //	eqoa-debug entities                      # list nearby NPCs/players
-//	eqoa-debug teleport 25400 100 15800      # move player
 //	eqoa-debug read 0x01FBBA58               # read EE RAM address
 //	eqoa-debug dump 0x01FBBA00 256           # hex dump
 package main
@@ -40,8 +39,6 @@ func main() {
 		cmdPlayer(os.Args[2:])
 	case "entities":
 		cmdEntities(os.Args[2:])
-	case "teleport", "tp":
-		cmdTeleport(os.Args[2:])
 	case "zone":
 		cmdZone(os.Args[2:])
 	case "pos":
@@ -70,7 +67,6 @@ PINE in PCSX2 settings). Works with any EQOA session.
 Commands:
   player     [--watch]              Player info (name, class, level, HP, position)
   entities                          List visible entities (NPCs, players)
-  teleport   <x> <y> <z>           Teleport player to coordinates
   zone       [--watch]              Show current world/zone
   pos        [--watch]              Track player position
   read       <0xADDR>              Read value at EE RAM address
@@ -84,7 +80,6 @@ Options:
 Examples:
   eqoa-debug player                 Show character stats
   eqoa-debug entities               Who's nearby?
-  eqoa-debug tp 25400 100 15800     Teleport to Freeport docks
   eqoa-debug pos --watch            Live position tracker
   eqoa-debug dump 0x006F35D0 240    Dump first entity record
 `)
@@ -196,39 +191,6 @@ func cmdEntities(args []string) {
 	x, y, z, _ := pcsx2.PlayerPosFrom(ee)
 	fmt.Printf("Player: %.0f, %.0f, %.0f\n", x, y, z)
 	fmt.Println(pcsx2.FormatEntities(entities, x, z))
-}
-
-// --- teleport ---
-
-func cmdTeleport(args []string) {
-	fs := flag.NewFlagSet("teleport", flag.ExitOnError)
-	pid := fs.Int("pid", 0, "Use /proc/PID/mem instead of PINE")
-	fs.Parse(args)
-
-	if fs.NArg() < 3 {
-		fmt.Fprintf(os.Stderr, "Usage: eqoa-debug teleport <x> <y> <z>\n")
-		os.Exit(1)
-	}
-
-	ee := connect(*pid)
-
-	x, err := strconv.ParseFloat(fs.Arg(0), 32)
-	if err != nil {
-		log.Fatalf("Invalid X: %v", err)
-	}
-	y, err := strconv.ParseFloat(fs.Arg(1), 32)
-	if err != nil {
-		log.Fatalf("Invalid Y: %v", err)
-	}
-	z, err := strconv.ParseFloat(fs.Arg(2), 32)
-	if err != nil {
-		log.Fatalf("Invalid Z: %v", err)
-	}
-
-	if err := pcsx2.WritePlayerPos(ee, float32(x), float32(y), float32(z)); err != nil {
-		log.Fatal(err)
-	}
-	fmt.Printf("Position: X=%.1f  Y=%.1f  Z=%.1f\n", x, y, z)
 }
 
 // --- zone ---

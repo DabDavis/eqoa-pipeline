@@ -11,7 +11,6 @@ Connects to PCSX2 via [PINE IPC](https://wiki.pcsx2.net/PINE) to inspect and mod
 ```bash
 eqoa-debug player                    # character info (name, class, level, HP)
 eqoa-debug entities                  # list nearby NPCs and players
-eqoa-debug teleport 25400 100 15800  # move your character
 eqoa-debug pos --watch               # live position tracker
 eqoa-debug zone                      # current world (Tunaria/Odus)
 eqoa-debug read 0x01FBBA58           # read any EE RAM address
