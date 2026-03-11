@@ -61,7 +61,7 @@ The serve pipeline requires a PNACH hook that redirects disc reads through EE RA
 
 1. Copy the PNACH loadhook to your PCSX2 cheats directory:
    ```
-   cp EEEE1FCC-loadhook.pnach ~/.config/PCSX2/cheats/
+   cp cheats/EEEE1FCC-loadhook.pnach ~/.config/PCSX2/cheats/
    ```
 2. Enable cheats in PCSX2 (System > Enable Cheats)
 3. Start EQOA — the game will freeze at the loading screen waiting for the pipeline

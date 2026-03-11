@@ -1,0 +1,72 @@
+[World ESF Host Redirect]
+// Minimal v8 — VICdStreamRead hook for ALL world ESFs
+// Covers TUNARIA + ODUS + PLANESKY sectors
+
+description=World ESF host redirect v8 (TUNARIA+ODUS+PLANESKY)
+author=claude
+
+// === Conditional: game modules must be loaded ===
+// Next 42 (0x2A) patches
+patch=1,EE,E02A0001,extended,001478e4
+
+// VICdStreamRead hook: j 0x000FA400
+patch=1,EE,203E5BF8,extended,0803E900
+
+// --- Debug counters ---
+patch=1,EE,200FA400,extended,3C0F000F
+patch=1,EE,200FA404,extended,35EFA800
+patch=1,EE,200FA408,extended,8DEE0010
+patch=1,EE,200FA40C,extended,25CE0001
+patch=1,EE,200FA410,extended,ADEE0010
+patch=1,EE,200FA414,extended,ADE40014
+
+// --- Sector range check [520000, 1110589) — TUNARIA+ODUS+PLANESKY ---
+patch=1,EE,200FA418,extended,3C0D0007
+patch=1,EE,200FA41C,extended,35ADEF40
+patch=1,EE,200FA420,extended,008D702A
+patch=1,EE,200FA424,extended,15C0001C
+patch=1,EE,200FA428,extended,00000000
+patch=1,EE,200FA42C,extended,3C0D0010
+patch=1,EE,200FA430,extended,35ADF23D
+patch=1,EE,200FA434,extended,008D702A
+patch=1,EE,200FA438,extended,11C00017
+patch=1,EE,200FA43C,extended,00000000
+
+// --- TUNARIA hit ---
+patch=1,EE,200FA440,extended,8DED0018
+patch=1,EE,200FA444,extended,25AD0001
+patch=1,EE,200FA448,extended,ADED0018
+patch=1,EE,200FA44C,extended,ADE4001C
+
+// --- Write request ---
+patch=1,EE,200FA450,extended,ADE40000
+patch=1,EE,200FA454,extended,ADE50004
+patch=1,EE,200FA458,extended,ADE60008
+patch=1,EE,200FA45C,extended,240E0001
+patch=1,EE,200FA460,extended,ADEE000C
+
+// --- Spin wait ---
+patch=1,EE,200FA464,extended,8DEE000C
+patch=1,EE,200FA468,extended,240D0002
+patch=1,EE,200FA46C,extended,15CDFFFD
+patch=1,EE,200FA470,extended,00000000
+
+// --- Done ---
+patch=1,EE,200FA474,extended,ADE0000C
+patch=1,EE,200FA478,extended,8DEE0020
+patch=1,EE,200FA47C,extended,25CE0001
+patch=1,EE,200FA480,extended,ADEE0020
+
+// --- Return 0 ---
+patch=1,EE,200FA484,extended,03E00008
+patch=1,EE,200FA488,extended,24020000
+
+// --- Padding ---
+patch=1,EE,200FA48C,extended,00000000
+patch=1,EE,200FA490,extended,00000000
+patch=1,EE,200FA494,extended,00000000
+
+// --- not_tunaria: pass through ---
+patch=1,EE,200FA498,extended,27BDFFE0
+patch=1,EE,200FA49C,extended,080F9700
+patch=1,EE,200FA4A0,extended,0080482D
