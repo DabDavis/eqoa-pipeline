@@ -70,7 +70,7 @@ The serve pipeline requires a PNACH hook that redirects disc reads through EE RA
 
 ### Zone Patches
 
-Create zone overlay patches with [esfpatch](https://github.com/eqoa/go-eqoa-pkg/cmd/esfpatch):
+Create zone overlay patches with [esfpatch](https://github.com/DabDavis/eqoa-esf-tools):
 
 ```bash
 esfpatch -zone 84 -color ff0000 eqoa.iso    # red Freeport

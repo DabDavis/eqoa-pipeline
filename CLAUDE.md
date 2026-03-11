@@ -83,7 +83,7 @@ Patches are file pairs in a directory: `zone_N.json` + `zone_N.bin`.
 
 **Binary data** (`zone_84.bin`): Raw zone bytes (same size as original zone in ISO).
 
-Patches are created by `esfpatch` in `go-eqoa-pkg/cmd/esfpatch/`.
+Patches are created by `esfpatch` in `eqoa-esf-tools/cmd/esfpatch/`.
 
 ## EE RAM Debug Region (0x000FA800)
 
@@ -118,7 +118,7 @@ None — stdlib only. No external Go modules required.
 
 | Tool | Location | Purpose |
 |------|----------|---------|
-| esfpatch | `go-eqoa-pkg/cmd/esfpatch/` | Create zone patches (color, yscale, actor swap) |
-| esfextract | `go-eqoa-pkg/cmd/esfextract/` | Inspect zones/actors, OBJ export |
+| esfpatch | `eqoa-esf-tools/cmd/esfpatch/` | Create zone patches (color, yscale, actor swap) |
+| esfextract | `eqoa-esf-tools/cmd/esfextract/` | Inspect zones/actors, OBJ export |
 | PNACH hook | `~/Documents/eqoa/cheats/EEEE1FCC-loadhook.pnach` | PS2-side VICdStreamRead intercept |
 | pcsx2_debug.py | `re-tools/pcsx2_debug.py` | Original Python version (kept for legacy/debug) |
